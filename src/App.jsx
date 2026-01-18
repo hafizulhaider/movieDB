@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Search from "./components/Search.jsx";
 import Spinner from "./components/Spinner.jsx";
 import MovieCard from "./components/MovieCard.jsx";
+import { useDebounce } from "react-use";
 
 const API_BASE_URL = "https://api.themoviedb.org/3";
 
@@ -21,42 +22,44 @@ function App() {
   const [movieList, setMovieList] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [debounced, setDebounced] = useState("");
 
+  useDebounce(() => setDebounced(searchTerm), 500, [searchTerm]);
 
-  const fetchMovies = async () => {
-
+  const fetchMovies = async (query = "") => {
     setLoading(true);
-    setErrorMsg('');
+    setErrorMsg("");
 
     try {
-      const endpoint = `${API_BASE_URL}/discover/movie?sort_by=popularity.desc`;
+      const endpoint = query
+        ? `${API_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`
+        : `${API_BASE_URL}/discover/movie?sort_by=popularity.desc`;
 
       const response = await fetch(endpoint, API_OPTIONS);
 
-      if(!response.ok){
-        throw new Error('Failed Fatching Movies')
+      if (!response.ok) {
+        throw new Error("Failed Fatching Movies");
       }
 
       const data = await response.json();
 
-      if(data.Response === 'False'){
-        setErrorMsg(data.Error || 'Failed To Fetch Movies');
+      if (data.Response === "False") {
+        setErrorMsg(data.Error || "Failed To Fetch Movies");
         setMovieList([]);
         return;
       }
-      setMovieList(data.results || [] );
-
+      setMovieList(data.results || []);
     } catch (error) {
       console.log(`Error Fetching Movies: ${error}`);
       setErrorMsg("Error Fetching Movies. Please Try Again Later.");
     } finally {
-      setLoading (false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMovies()
-  }, []);
+    fetchMovies(debounced);
+  }, [debounced]);
 
   return (
     <main>
@@ -79,13 +82,11 @@ function App() {
             <p className="text-red-700">{errorMsg}</p>
           ) : (
             <ul>
-              {
-                movieList.map ((movie) => (
-                  <MovieCard key={movie.id} movie={movie} />
-                ))}
+              {movieList.map((movie) => (
+                <MovieCard key={movie.id} movie={movie} />
+              ))}
             </ul>
-          )
-        }
+          )}
         </section>
       </div>
     </main>
